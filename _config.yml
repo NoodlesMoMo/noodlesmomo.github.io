@@ -1,0 +1,28 @@
+# Site settings
+title: Noodles Zone
+name: Noodles Zone
+email: manguijie.noodles@gmail.com
+description: 'Noodles&#039;s Free Space'
+keywords: 'Noodles,Noodles,blog,c,c++,python,unix-like'
+baseurl: "" # the subpath of your site, e.g. /blog/
+url: "http://www.noodlesmomo.tk" # the base hostname & protocol for your site
+github: noodlesmomo
+twitter: 
+
+author:
+  name: noodles
+  email: noodles@gmail.com
+  github: noodlesmomo
+  twitter: 
+  bio: 'Noodles&#039;s Free Blog'
+#  email_md5: 3cccd2b313d9e9e1019f7a6784a6a084
+
+
+# Build settings
+paginate: 10
+paginate_path: "page/:num/"
+highlighter: pygments
+markdown: kramdown
+rss_path: feed
+categories_path: categories.html
+tags_path: tags.html
