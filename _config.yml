@@ -10,19 +10,20 @@ github: noodlesmomo
 twitter: 
 
 author:
-  name: noodles
+  name: NoodlesMoMo
   email: noodles@gmail.com
   github: noodlesmomo
   twitter: 
   bio: 'Noodles&#039;s Free Blog'
-#  email_md5: 3cccd2b313d9e9e1019f7a6784a6a084
+  email_md5: 48704463cba11c09f03346a052a2f33e
 
 
 # Build settings
 paginate: 10
 paginate_path: "page/:num/"
-highlighter: pygments
-markdown: kramdown
+#highlighter: pygments
+pygments: true
+markdown: redcarpet
 rss_path: feed
 categories_path: categories.html
 tags_path: tags.html
