@@ -15,7 +15,7 @@ tags:
 
 有以下这段程序:
 
-```python
+{% highlight python linenos %}
 #!/usr/bin/env python
 
 def countdown(n):
@@ -32,7 +32,7 @@ for x in c:
     print x
     if x == 5:
         print c.send(3)
-```
+{% endhighlight %}
 
 函数执行结果为： 5 2 1 0
 
