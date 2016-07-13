@@ -15,15 +15,17 @@ tags:
 ### Tornado IOLoop 源码阅读 ###
 
 Tornado中，IOLoop实现了底层的事件循环。在Tornado4.3+Linux环境下，当你简单很简单的写下如下代码：
+
 ```python
 import tornado.ioloop
 
 tornado.ioloop.IOLoop.instance().start()
 ```
+
 Tornado对采用的是epoll()系统调用的水平触发模式。
 
 
-在IOLoop类(`/usr/local/lib/python2.7/dist-packages/tornado-4.3-py2.7-linux-x86_64.egg/tornado/ioloop.py`)
+在IOLoop类(`tornado/ioloop.py`)
 里有如下类似宏定义：
 
 <!--more-->
@@ -93,6 +95,7 @@ Tornado使用纯python语言实现了一个事件反应堆模型，这个反应�
 所以调用的是IOLoop.configurable_base()。IOLoop.configurable_base()返回IOLoop类对象(python中
   类也是对象)。
 3. 接着调用`Configurable.configured_class()`-->`IOLoop.configurable_default()`。在IOLoop中，有
+
 ```python
 @classmethod
 def configurable_default(cls):
@@ -106,9 +109,11 @@ def configurable_default(cls):
     from tornado.platform.select import SelectIOLoop
     return SelectIOLoop
 ```
+
 Tornado使用Configurable类实现平台的一致性(select/poll/epoll/kqueue)，在Linux下，configurable_default
 函数返回EPollIOLoop类对象，此类对PoolIOLoop类做了简单的包装，
 它是真正的背后英雄。至此，IOLoop.instance()会接着调用EPollIOLoop类的initialize()。
+
 ```python
 class EPollIOLoop(PollIOLoop):
     def initialize(self, **kwargs):
@@ -325,14 +330,17 @@ def start(self):
             if old_wakeup_fd is not None:
                 signal.set_wakeup_fd(old_wakeup_fd)
 ```
+
 Tornado的IOLoop事件循环机制跟libevent是何其相似！
 最后，顺便说一下stop()函数：
+
 ```python
 def stop(self):
     self._running = False
     self._stopped = True
     self._waker.wake()
 ```
+
     设置与循环相关的标志，然后调用self._waker.wake()发送一个'x'，唤醒epoll()，当再次执行循环时，
     条件不在成立，结束循环。
 
