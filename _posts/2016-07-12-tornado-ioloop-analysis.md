@@ -1,5 +1,5 @@
 ---
-title: Tornado IOLoop1
+title: Tornado IOLoop 1
 author: Noodles
 layout: post
 permalink: /2016/07/Python-IOLoop1
@@ -88,13 +88,16 @@ Tornado 对epoll的常用事件重新定义为 READ、WRITE、ERROR。
 
 Tornado使用纯python语言实现了一个事件反应堆模型，这个反应堆模型对python内置的select模块进行了封装，
 当你只是简单的如开始那段程序运行时，整个事件反应堆就开始等待网络IO事件发生了。背后的调用过程是：
-1. 调用IOLoop对象的instance()静态函数，此函数返回一个IOLoop类型的单例,在执行之前添加全局锁。
+
+  1. 调用IOLoop对象的instance()静态函数，此函数返回一个IOLoop类型的单例,在执行之前添加全局锁。
 在构造IOLoop对象时，首先会使用父类的`__new__()`来创建类。
   `Configurable`-->`Configurable.__new__()`
-2. 在`Configurable.__new__()`中会调用`cls.configurable_base()`，此时cls代表IOLoop这个类，
+
+  2. 在`Configurable.__new__()`中会调用`cls.configurable_base()`，此时cls代表IOLoop这个类，
 所以调用的是IOLoop.configurable_base()。IOLoop.configurable_base()返回IOLoop类对象(python中
   类也是对象)。
-3. 接着调用`Configurable.configured_class()`-->`IOLoop.configurable_default()`。在IOLoop中，有
+
+  3. 接着调用`Configurable.configured_class()`-->`IOLoop.configurable_default()`。在IOLoop中，有
 
 ```python
 @classmethod
@@ -344,5 +347,5 @@ def stop(self):
     设置与循环相关的标志，然后调用self._waker.wake()发送一个'x'，唤醒epoll()，当再次执行循环时，
     条件不在成立，结束循环。
 
-还有一些知识点还没有搞清楚，另外，还有一些重要函数，例如._run_callback(callback)还没有跟下去。
+还有一些知识点还没有搞清楚，另外，还有一些重要函数，像.`_run_callback(callback)`还没有跟下去。
 这是协程的关键。后续会继续分析，争取将Tornado整个框架模块分析明白透彻。
