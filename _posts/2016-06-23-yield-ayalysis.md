@@ -15,7 +15,7 @@ tags:
 
 有以下这段程序:
 
-{% highlight python linenos %}
+{% highlight python %}
 #!/usr/bin/env python
 
 def countdown(n):

@@ -28,11 +28,11 @@ tags:
 在使用inotify机制时，主要涉及到如下几个API和数据类型：
 
 - `inotify_init()`和`inotify_init1()`: 用来创建一个inotify实例，是inotify机制后续继续的基础，调用成功返回一个文件描述符，
-此文件描述符可以添加到select/poll/epoll中，可以类比于`epoll_create()`。inotify_init1()应该是后来加入的，
+此文件描述符可以添加到select/poll/epoll中，可以类比于`epoll_create()`。`inotify_init1()`应该是后来加入的，
 它带有一个flags参数，你可以让返回的描述符通过将flags设置`IN_NONBLOCK`和`IN_CLOEXEC`来影响其对应的描述符
-属性。当flags为0时，它等同于inotify_init()。
+属性。当flags为0时，它等同于`inotify_init()`。
 - `inotify_add_watch(int fd, const char* pathname, uint32_t mask)`: 你可以将其等同于`epoll_ctl(EPOLL_CTL_ADD)`,
-它用来将pathname指定的文件添加到监视描述符中，第一个参数fd就是inotify_init()返回的描述符。mask是事件类型
+它用来将pathname指定的文件添加到监视描述符中，第一个参数fd就是`inotify_init()`返回的描述符。mask是事件类型
 的掩码，它的详细定义你可以通过man inotify来查看其详细说明及完整定义。如果成功，此函数返回一个*watch descriptor*
 Linux使用此描述符与pathname相关联。注意这个描述符与inotify_init()返回描述符之间的不同。你需要为此描述符建立一个
 类似map<int, const char* pathname>的结构。因为你极有可能在必要时对其修改或将其移除，届时，你需要知道这个描述符
