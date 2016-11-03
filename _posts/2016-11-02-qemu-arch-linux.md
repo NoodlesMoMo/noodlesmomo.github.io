@@ -204,9 +204,10 @@ qemu中应该注意的地方。如果想完整的了解ArchLinux，需要首先�
 
     修改 /etc/ssh/sshd_config 配置文件，约在40多行，可看到
     `#PermitRootLogin prohibit-password`一行，可在相应位置
-    添加 `PermitRootLogin yes` 。这样，就可以以root用户ssh连接了。
+    添加 `PermitRootLogin yes` 。这样，就可以以root用户ssh连接了。  
+
   
-    <center><img src="/images/arch_install/8.png"></img></center>
+  <center><img src="/images/arch_install/8.png"></img></center>
 
  ---------------------------------------------------
 #### 其它
