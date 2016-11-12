@@ -21,10 +21,12 @@ author:
 # Build settings
 paginate: 10
 paginate_path: "page/:num/"
-highlighter: pygments
+#highlighter: pygments
+highlighter: rouge
 gems: [jekyll-paginate]
 #pygments: true 
-markdown: redcarpet
+#markdown: redcarpet
+markdown: kramdown
 rss_path: feed
 categories_path: categories.html
 tags_path: tags.html
