@@ -15,7 +15,7 @@ tags:
 
 有以下这段程序:
 
-{% highlight python %}
+{% highlight python linenos %}
 #!/usr/bin/env python
 
 def countdown(n):
@@ -50,7 +50,7 @@ for x in c:
   *注意*:
   1. 左右方括号中的内容均可以为空，例如如下代码构造一个无实际用途的定时器：
 
-  ```python
+{% highlight python linenos %}
   import time
 
   def one_second_clock(t=10):
@@ -62,7 +62,8 @@ for x in c:
   clock = one_second_clock()
   for _ in clock:
     print 'one second has gone'
-  ```
+{% endhighlight %}
+
   2. **如果代码中含有形如：`val = yield 3` 形式的代码，千万不要理解成 `val = 3`!**
   val的赋值与yield表达式没有直接关系！val的值是由生成器的next()或send(params)来决定的：
   另外，第一次触发生成器时，必须调用next()或send(None)。不能调用send(X)将X传递进去，否则
@@ -78,13 +79,14 @@ for x in c:
   return 3而已，yield表达式的执行结果由next()或send(X)函数返回值接收。你需要在yield后面跟上有实际意义的表达式**
   例如：
 
-```python
-  def printHelloWorld():
+{% highlight python linenos %}
+
+def print_hello_world():
       print 'Hello world!'
       return 1234
 
   def mygen():
-      val = yield printHelloWorld()
+      val = yield print_hello_world()
       print val
 
   def test_mygen():
@@ -96,8 +98,8 @@ for x in c:
           print "mygen has been stop!"
 
   test_mygen()
-  ```
- 
+{% endhighlight %} 
+
  ---------------------------------------------------
 
  回到开始的程序，借助Pycharm，单步调试以下这个程序，跟踪一下程序的主要执行流程。
