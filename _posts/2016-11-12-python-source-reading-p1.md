@@ -231,3 +231,15 @@ PyTypeObject PyType_Type = {
          文件和临时文件*)
  我使用的操作系统是ubuntu，gcc版本是4.8。在我的环境下很快编译出了Python可执行程序。
 
+ 我们可以查程序帮我们展开的`PyType_Type`结构定义:
+ **typeobject.i**
+
+{% highlight c linenos %}
+PyTypeObject PyType_Type = {
+ 1, &PyType_Type,
+ 0,
+ "type",
+ // ...
+};
+{% endhighlight %}
+
