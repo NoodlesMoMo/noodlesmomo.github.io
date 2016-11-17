@@ -15,8 +15,10 @@ tags:
 
 <!--more-->
 
-最近打算阅读python源码。跟随<<Python源码剖析>>一书开始学习。目前Python3.X已经
-大行其道了，为了省力，我跟书上的版本保持一致，阅读的版本是2.5.0版本源码。
+最近阅读python源码。跟随《Python源码剖析》一书开始学习。书写得很棒。
+作者以其惊人的耐心和透彻的分析，向我们阐述了python背后的运作原理。阅读
+下来已是不易，更何况写书。拾人牙慧，我也是跟着书一起对2.5版本的源码进行
+学习，以期对python有更深的认识。
 
  ---------------------------------------------------
 
@@ -138,3 +140,94 @@ tags:
   **在python中，一切皆为对象，包括类型。比如，int, string, list, dict 等类型也是python的对象，这些是
 python内部预先定义好的，称之为`内建对象`。对于类型这种特殊的对象，我们姑且称之为 `类型对象`， 对于由
 这些类型创建的实例或我们通过class创建的对象，我们称之为`实例对象`。**
+
+  如果按照对象占用内存空间是否固定大小分类，可以有固定大小和可变大小两种情况。python内部使用`PyObject`
+和`PyVarObject`两种结构来分别表示固定大小和可变大小两种对象。这两种结构体中都包含`PyTypeObject`结构指针，
+正是这个类型，描述了Python世界中的万千对象。
+
+  PyTypeObject结构有着足够的信息来描述一个对象的类型，Python用这个结构来实现面向对象中的`类`的概念。
+  这个结构成员代表的含义主要分为以下几种情况,先来简要说明一下，随着后续的阅读和学习，我们再来反复研究
+  这个重要的数据结构。
+  - tp_name: 类型名称
+  - tp_basicsize, tp_itemsize: 类型对象所占内存大小信息
+  - 函数族: 这个结构体有许多的函数指针成员，它们代表了一系列该类型可以进行的操作，这是面向对象理论中的
+  成员函数概念。(包括C++中的构造/析构/操作符等等)
+  - 其它: 包括python中特有的文档字符串，MRO多重继承时继承顺序的解决方式，等等。
+
+  值得注意的是: 在这个结构体中，同样存在着一个自身类型的_ob_type指针成员。这个成员就是Python中类也是对象
+  (**类型对象**)的表示！那么类型对象的类型是什么呢？Python中还有一个特殊的类型: `PyType_Type`。
+  
+  它的定义在Object/typeobject.c里：
+{% highlight c linenos %}
+
+PyTypeObject PyType_Type = {
+	PyObject_HEAD_INIT(&PyType_Type)
+	0,					/* ob_size */
+	"type",					/* tp_name */
+	sizeof(PyHeapTypeObject),		/* tp_basicsize */
+	sizeof(PyMemberDef),			/* tp_itemsize */
+	(destructor)type_dealloc,		/* tp_dealloc */
+	0,					/* tp_print */
+	0,			 		/* tp_getattr */
+	0,					/* tp_setattr */
+	type_compare,				/* tp_compare */
+	(reprfunc)type_repr,			/* tp_repr */
+	0,					/* tp_as_number */
+	0,					/* tp_as_sequence */
+	0,					/* tp_as_mapping */
+	(hashfunc)_Py_HashPointer,		/* tp_hash */
+	(ternaryfunc)type_call,			/* tp_call */
+	0,					/* tp_str */
+	(getattrofunc)type_getattro,		/* tp_getattro */
+	(setattrofunc)type_setattro,		/* tp_setattro */
+	0,					/* tp_as_buffer */
+	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
+		Py_TPFLAGS_BASETYPE,		/* tp_flags */
+	type_doc,				/* tp_doc */
+	(traverseproc)type_traverse,		/* tp_traverse */
+	(inquiry)type_clear,			/* tp_clear */
+	0,					/* tp_richcompare */
+	offsetof(PyTypeObject, tp_weaklist),	/* tp_weaklistoffset */
+	0,					/* tp_iter */
+	0,					/* tp_iternext */
+	type_methods,				/* tp_methods */
+	type_members,				/* tp_members */
+	type_getsets,				/* tp_getset */
+	0,					/* tp_base */
+	0,					/* tp_dict */
+	0,					/* tp_descr_get */
+	0,					/* tp_descr_set */
+	offsetof(PyTypeObject, tp_dict),	/* tp_dictoffset */
+	0,					/* tp_init */
+	0,					/* tp_alloc */
+	type_new,				/* tp_new */
+	PyObject_GC_Del,        		/* tp_free */
+	(inquiry)type_is_gc,			/* tp_is_gc */
+};
+
+{% endhighlight %}
+
+  可以看到`PyType_Type`的类型也是`PyTypeObject`!， 你可以使用预编译的方法将其宏展开，
+届时你会发现，这个所谓的特殊类型也没啥特殊的，仅仅是它的ob_type成员指向自身而已。
+
+  可以看到，PyTypeObject这个结构实现了Python世界中的类型描述大一统。
+
+  为了接下来的学习，我将尝试编译这个2.5版本的python。
+  解压之后，源文件目录下有一个configure配置脚本，很熟悉的Linux三板斧: configure & make & makeinstall
+  执行`configure --help`可以查看这个脚本支持的命令，
+
+    configure --prefix=/opt/python25 --disable-shared
+
+  执行完毕，生成Makefile。我在make时候编译Module下的getbuildinfo.c文件时失败了，原因是Makefile中开启了
+版本控制，我的代码不是用svnversion版本控制工具来管理的，所以执行svnversion时会因为`Unversiond directory`
+失败。需要对Makefile做少许改动:
+ 将`SVNVERSION`变量这行注释掉， 另外，将`Compiler options`做如下改动:
+
+    OPT=		-DNDEBUG -g -O3 -Wall -Wstrict-prototypes
+    OPT=		-DNDEBUG -g -Wall -Wstrict-prototypes --save-temp
+
+ 去掉原来的优化选项，增加`--save-temp`。尽量避免我们调试时候遇到因为优化而难以理解的代码；同时将编译过程
+ 中的临时文件保存下来，起始我们主要对预处理文件感兴趣。(*注意，开启--save-temp选项之后会有大量的中间过程
+         文件和临时文件*)
+ 我使用的操作系统是ubuntu，gcc版本是4.8。在我的环境下很快编译出了Python可执行程序。
+
