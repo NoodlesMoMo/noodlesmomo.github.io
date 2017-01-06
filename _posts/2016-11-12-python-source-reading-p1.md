@@ -34,10 +34,10 @@ tags:
 
  `PyObject_HEAD`是个宏，为了阅读方便，我们可以使用gcc将这个头文件预编译一下。
 
-    gcc -E -P Include/object.h -o ~/py_src/object.i
+    gcc -E -P -C Include/object.h -o ~/py_src/object.i
 
- 参数-E 是只预编译，不进行汇编和连接过程。在预编译时，预处理器会为文件打上行号标记(`linemarks`), 
- 加上`-P`可以抑制编译器这种行为。这样，我们可以得到一个预编译之后的文件。
+ 参数-E 是只预编译，不进行汇编和连接过程;在预编译时，预处理器会为文件打上行号标记(`linemarks`), 
+ 加上`-P`可以抑制编译器这种行为; `-C` 指示保留其中的注释。这样，我们可以得到一个预编译之后的文件。
  可以看到，预编译后的_object定义如下:
 
 {% highlight c linenos %}
@@ -133,7 +133,7 @@ tags:
 要提醒的是，在object.h中定义了其它类似`Py_DEBUG`的宏，这类宏从命名也可以看出，这是为了编译调试版
 条件编译的，我们如果想要将条件编译的宏展开，可使用`-D`选项:
 
-    gcc -E -P -D Py_DEBUG Include/object.h -o ~/py_src/object_debug.i
+    gcc -E -P -C -D Py_DEBUG Include/object.h -o ~/py_src/object_debug.i
 
 这样预处理之后的文件中就会展开有关`Py_DEBUG`选项的宏定义。
 
@@ -148,10 +148,14 @@ python内部预先定义好的，称之为`内建对象`。对于类型这种特
   PyTypeObject结构有着足够的信息来描述一个对象的类型，Python用这个结构来实现面向对象中的`类`的概念。
   这个结构成员代表的含义主要分为以下几种情况,先来简要说明一下，随着后续的阅读和学习，我们再来反复研究
   这个重要的数据结构。
+
   - tp_name: 类型名称
+
   - tp_basicsize, tp_itemsize: 类型对象所占内存大小信息
+
   - 函数族: 这个结构体有许多的函数指针成员，它们代表了一系列该类型可以进行的操作，这是面向对象理论中的
   成员函数概念。(包括C++中的构造/析构/操作符等等)
+
   - 其它: 包括python中特有的文档字符串，MRO多重继承时继承顺序的解决方式，等等。
 
   值得注意的是: 在这个结构体中，同样存在着一个自身类型的_ob_type指针成员。这个成员就是Python中类也是对象
@@ -207,10 +211,7 @@ PyTypeObject PyType_Type = {
 
 {% endhighlight %}
 
-  可以看到`PyType_Type`的类型也是`PyTypeObject`!， 你可以使用预编译的方法将其宏展开，
-届时你会发现，这个所谓的特殊类型也没啥特殊的，仅仅是它的ob_type成员指向自身而已。
-
-  可以看到，PyTypeObject这个结构实现了Python世界中的类型描述大一统。
+  可以看到`PyType_Type`的类型也是`PyTypeObject`!
 
   为了接下来的学习，我将尝试编译这个2.5版本的python。
   解压之后，源文件目录下有一个configure配置脚本，很熟悉的Linux三板斧: configure & make & makeinstall
@@ -232,14 +233,19 @@ PyTypeObject PyType_Type = {
  我使用的操作系统是ubuntu，gcc版本是4.8。在我的环境下很快编译出了Python可执行程序。
 
  我们可以查程序帮我们展开的`PyType_Type`结构定义:
+
  **typeobject.i**
 
 {% highlight c linenos %}
 PyTypeObject PyType_Type = {
- 1, &PyType_Type,
+ 1, 
+ &PyType_Type,
  0,
  "type",
  // ...
 };
 {% endhighlight %}
 
+对照`PyTypeObject`结构体定义，这个所谓的特殊类型也没啥特殊的，仅仅是它的ob_type成员指向自身而已。
+
+  **可以看到，PyTypeObject这个结构实现了Python世界中的类型描述大一统**

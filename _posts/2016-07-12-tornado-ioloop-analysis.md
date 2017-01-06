@@ -165,7 +165,7 @@ def add_handler(self, fd, handler, events):
 ```
 
 add_handler中，使用stack_context.wrap对回调处理器进行了包装，使处理器携带所在线程调用栈信息，这样当有
-异常出现时，Tornado可以倾泄调用栈信息。
+异常出现时，Tornado可以倾泄调用栈信息。(StackContext类实现以后单独剖析)
 
 至此，IOLoop已经前戏准备就绪，接下来进入IOLoop.start().
 
