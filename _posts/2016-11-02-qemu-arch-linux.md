@@ -11,8 +11,6 @@ tags:
   
 ---
 
-### qemu安装ArchLinux
-
 <!--more-->
 
 网上有大量的关于ArchLinux的安装，配置介绍。但用qemu虚拟机的不多。ArchLinux是一款致力于轻量级,简单,

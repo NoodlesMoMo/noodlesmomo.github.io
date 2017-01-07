@@ -10,8 +10,6 @@ tags:
 
 ---
 
-### SD卡写入树莓派Raspbian ###
-
   本文介绍Linux下写入Raspbian操作系统。
 
 <!--more-->

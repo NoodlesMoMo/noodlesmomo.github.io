@@ -12,8 +12,6 @@ tags:
 
 ---
 
-### Tornado Autoreload ###
-
 在开发Tornado(v4.3)时，如果设置了Application的debug参数，Tornado会自动启用autoreload
 机制: 当项目中有脚本修改时，Tornado会自动重启并且reload所有相关的模块，不用修改
 完成之后再手动停止-运行了，比较方便调试。如何实现的？其实很简单: Tornado会将所有

@@ -11,8 +11,6 @@ tags:
   
 ---
 
-### Python yield 浅析
-
 有以下这段程序:
 
 {% highlight python linenos %}
