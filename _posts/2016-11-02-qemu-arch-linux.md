@@ -32,7 +32,7 @@ qemu中应该注意的地方。如果想完整的了解ArchLinux，需要首先�
  1. `Use ISO image`中选择下载好的ArchLinux镜像。
  `OS type`选择Linux, 版本可选择通用2.6.25之后的内核版本。
   
- <center><img src="/images/arch_install/1.png"></img></center>
+ <center><img src="/images/arch_install/1.png"></center>
 
  2. 内存, CPU核数, 磁盘大小等。根据实际情况。我这里设置内存1G, 1核, 磁盘大小为32G。
  
@@ -49,20 +49,20 @@ qemu中应该注意的地方。如果想完整的了解ArchLinux，需要首先�
  和`/dev/loop0`两个磁盘设备。其中,`/dev/loop0`表示我们的CD设备,`/dev/vda`表示我们真正
  需要接下来分区的硬盘设备。当然，目前还没有任何分区。
  
- <center><img src="/images/arch_install/2.png"></img></center>
+ <center><img src="/images/arch_install/2.png"></center>
 
  2. 执行`cfdisk /dev/vda` 命令，选择GPT分区模式。进入cfdisk程序交互界面。选中下面的
  `new`,按下`n`,划分第一块分区，手动输入`200M`,然后选中`type`，类型选择`EFI System`,
  这个分区作为我们的boot目录。
  
- <center><img src="/images/arch_install/3.png"></img></center>
+ <center><img src="/images/arch_install/3.png"></center>
  
  3. 紧接着划分2G大小的，类型为`linux swap`的第二个分区，此分区接下来会作为交换分区。
 
  4. 接下来同样的方式创建两个类型为`linux filesystem`分区,分别作为我们的根目录和/home目录.
  根目录可以分12G，余下的作为/home目录。
  
- <center><img src="/images/arch_install/4.png"></img></center>
+ <center><img src="/images/arch_install/4.png"></center>
 
  5. 设置完成后，选择`write`，然后退出。
 
@@ -75,7 +75,7 @@ qemu中应该注意的地方。如果想完整的了解ArchLinux，需要首先�
     `mkfs.ext4 /dev/vda3`  
     `mkfs.ext4 /dev/vda4`  
  
- <center><img src="/images/arch_install/5.png"></img></center>
+ <center><img src="/images/arch_install/5.png"></center>
 
   2. 执行 **mkswap /dev/vda2**，将/dev/vda2格式化成交换分区.
 
@@ -85,7 +85,7 @@ qemu中应该注意的地方。如果想完整的了解ArchLinux，需要首先�
 
     (parted) `set 1 boot on`
   
- <center><img src="/images/arch_install/6.png"></img></center>
+ <center><img src="/images/arch_install/6.png"></center>
 
  ---------------------------------------------------
 
@@ -123,7 +123,7 @@ qemu中应该注意的地方。如果想完整的了解ArchLinux，需要首先�
 
   系统启动时会读取/etc/fstab来决定如何挂载分区。
   
-  <center><img src="/images/arch_install/7.png"></img></center>
+  <center><img src="/images/arch_install/7.png"></center>
 
  ---------------------------------------------------
 
@@ -205,7 +205,7 @@ qemu中应该注意的地方。如果想完整的了解ArchLinux，需要首先�
     添加 `PermitRootLogin yes` 。这样，就可以以root用户ssh连接了。  
 
   
-  <center><img src="/images/arch_install/8.png"></img></center>
+  <center><img src="/images/arch_install/8.png"></center>
 
  ---------------------------------------------------
 #### 其它

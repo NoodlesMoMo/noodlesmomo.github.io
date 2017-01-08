@@ -22,7 +22,7 @@ tags:
 
   
   首先贴一张IP报文协议图，内核的相关代码与此图密不可分。
-  <center><img src="/images/study/ip_checksum/ip.jpg"></img></center>
+  <center><img src="/images/study/ip_checksum/ip.jpg"></center>
   
 
 <!--more-->

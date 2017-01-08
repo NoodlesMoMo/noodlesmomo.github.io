@@ -103,14 +103,14 @@ def print_hello_world():
  回到开始的程序，借助Pycharm，单步调试以下这个程序，跟踪一下程序的主要执行流程。
 
 **step1**
-  <center><img src="/images/study/python/python_yield/step1.png"></img></center>
+  <center><img src="/images/study/python/python_yield/step1.png"></center>
 
   程序开始运行时，首先执行第13行，创建一个生成器对象。需要注意的是，第13行执行过后
   并没有去执行countdown()函数中的print语句，这时候，生成器还没有开始运行。
   
   
 **step2**
-  <center><img src="/images/study/python/python_yield/step2.png"></img></center>
+  <center><img src="/images/study/python/python_yield/step2.png"></center>
 
   当单步执行完第14行之后，for循环会调用生成器的next()触发生成器，这时，程序的执行流程
   并没有执行第15行print x而是跳转到countdown()中执行。实际上此时的x还为None，因为next()
@@ -118,14 +118,14 @@ def print_hello_world():
 
 
 **step3**
-  <center><img src="/images/study/python/python_yield/step3.png"></img></center>i
+  <center><img src="/images/study/python/python_yield/step3.png"></center>i
 
   程序执行到第7行时，先执行`=` 右边的yield表达式，执行完yield表达式之后立马返回。
   此处可看成将yield n 看成 return n。(此时n=5)
     
     
 **step4**
-  <center><img src="/images/study/python/python_yield/step4.png"></img></center>
+  <center><img src="/images/study/python/python_yield/step4.png"></center>
  
   接下来，到了关键的一步：程序执行第17行之后，程序流程又转向了countdown()中，在上一步中，
   程序已经执行过`=`右边的yield表达式了，这次会执行`=`左边的表达式：也即将send()的参数3
@@ -133,19 +133,19 @@ def print_hello_world():
 
 
 **step5**
-  <center><img src="/images/study/python/python_yield/step5.png"></img></center>
+  <center><img src="/images/study/python/python_yield/step5.png"></center>
  
   如上分析，newvalue已经变为send()的参数3.
 
 
 **step6**
-  <center><img src="/images/study/python/python_yield/step6.png"></img></center>
+  <center><img src="/images/study/python/python_yield/step6.png"></center>
 
   程序主动权还在countdown()中，执行过第9行之后，进入下一次循环。又遇到yield语句，将3返回。
 
 
 **step7**
-  <center><img src="/images/study/python/python_yield/step7.png"></img></center>
+  <center><img src="/images/study/python/python_yield/step7.png"></center>
 
   可以看到程序流程回到14行（此时14行还未执行）。上面分析yield返回3给send，但程序并没有
   用x来接收send的返回值，所以x还是刚迭代时的值5。再进行next()时，程序又一次进入countdown（

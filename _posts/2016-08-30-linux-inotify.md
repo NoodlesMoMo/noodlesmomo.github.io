@@ -42,7 +42,7 @@ Linux使用此描述符与pathname相关联。注意这个描述符与inotify_in
 以上说了两种不同的描述符，一类是`inotify_init()`函数返回的，另一类是调用`inotify_add_watch()`返回的，它们之间
 的关系如下图所示：(可类比网络中的监听描述符与已链接的普通描述符)
 
-  <center><img src="/images/inotify/inotify_watch_fd.png"></img></center>
+  <center><img src="/images/inotify/inotify_watch_fd.png"></center>
 
 接下来说一下`inotify_event`这个数据类型,它的定义如下:
 
