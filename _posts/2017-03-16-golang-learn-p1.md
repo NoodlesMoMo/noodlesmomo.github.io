@@ -39,7 +39,7 @@ tags:
     }
 {% endhighlight %}
 
-content_content这个字典, 不会因为一开始没有"hello"这个键而报错.
+content_content这个字典, 不会因为一开始没有"hello"这个键而报错. 
 
 另外, **全局变量在定义时,可以使用函数来初始化这个全局变量.**
 {% highlight go %}
