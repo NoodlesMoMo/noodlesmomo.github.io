@@ -36,9 +36,9 @@ tags:
 
  参数-E 是只预编译，不进行汇编和连接过程;在预编译时，预处理器会为文件打上行号标记(`linemarks`), 
  加上`-P`可以抑制编译器这种行为; `-C` 指示保留其中的注释。这样，我们可以得到一个预编译之后的文件。
- 可以看到，预编译后的_object定义如下:
+ 可以看到，预编译后的`_object`定义如下:
 
-{% highlight c linenos %}
+{% highlight c %}
 
     typedef struct _object {
         Py_ssize_t ob_refcnt;   // 引用计数
@@ -160,7 +160,7 @@ python内部预先定义好的，称之为`内建对象`。对于类型这种特
   (**类型对象**)的表示！那么类型对象的类型是什么呢？Python中还有一个特殊的类型: `PyType_Type`。
   
   它的定义在Object/typeobject.c里：
-{% highlight c linenos %}
+{% highlight c %}
 
 PyTypeObject PyType_Type = {
 	PyObject_HEAD_INIT(&PyType_Type)
@@ -234,7 +234,7 @@ PyTypeObject PyType_Type = {
 
  **typeobject.i**
 
-{% highlight c linenos %}
+{% highlight c %}
 PyTypeObject PyType_Type = {
  1, 
  &PyType_Type,
