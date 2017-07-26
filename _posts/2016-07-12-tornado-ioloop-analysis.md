@@ -16,11 +16,11 @@ tags:
 
 Tornado中，IOLoop实现了底层的事件循环。在Tornado4.3+Linux环境下，当你简单很简单的写下如下代码：
 
-```python
+{% highlight python %}
 import tornado.ioloop
 
 tornado.ioloop.IOLoop.instance().start()
-```
+{% endhighlight %}
 
 Tornado对采用的是epoll()系统调用的水平触发模式。
 
@@ -30,7 +30,8 @@ Tornado对采用的是epoll()系统调用的水平触发模式。
 
 <!--more-->
 
-```python
+{% highlight python %}
+
 # Constants from the epoll module
  _EPOLLIN = 0x001
  _EPOLLPRI = 0x002
@@ -47,11 +48,11 @@ Tornado对采用的是epoll()系统调用的水平触发模式。
  WRITE = _EPOLLOUT
  ERROR = _EPOLLERR | _EPOLLHUP
 
-```
+{% endhighlight %}
 Tornado部分定义了epoll()的事件类型，这些常量与epoll()系统调用的事件类型是严格一致的：可以通过
 打开`/usr/include/x86_64-linux-gnu/sys`下的epoll.h EPOLL_EVENTS枚举及宏定义做对比。
 
-```c
+{% highlight C %}
 enum EPOLL_EVENTS
   {
     EPOLLIN = 0x001,
@@ -83,7 +84,8 @@ enum EPOLL_EVENTS
     EPOLLET = 1u << 31
 #define EPOLLET EPOLLET
   };
-```
+{% endhighlight %}
+
 Tornado 对epoll的常用事件重新定义为 READ、WRITE、ERROR。
 
 Tornado使用纯python语言实现了一个事件反应堆模型，这个反应堆模型对python内置的select模块进行了封装，
@@ -99,7 +101,7 @@ Tornado使用纯python语言实现了一个事件反应堆模型，这个反应�
 
   3. 接着调用`Configurable.configured_class()`-->`IOLoop.configurable_default()`。在IOLoop中，有
 
-```python
+{% highlight python %}
 @classmethod
 def configurable_default(cls):
     if hasattr(select, "epoll"):
@@ -111,22 +113,24 @@ def configurable_default(cls):
         return KQueueIOLoop
     from tornado.platform.select import SelectIOLoop
     return SelectIOLoop
-```
+{% endhighlight %}
 
 Tornado使用Configurable类实现平台的一致性(select/poll/epoll/kqueue)，在Linux下，configurable_default
 函数返回EPollIOLoop类对象，此类对PoolIOLoop类做了简单的包装，
 它是真正的背后英雄。至此，IOLoop.instance()会接着调用EPollIOLoop类的initialize()。
 
-```python
+{% highlight python %}
 class EPollIOLoop(PollIOLoop):
     def initialize(self, **kwargs):
         super(EPollIOLoop, self).initialize(impl=select.epoll(), **kwargs)
-```
+
+{% endhighlight %}
 
 最终调用到
 `PollIOLoop.initialize()`，此函数定义如下：
 
-```python
+{% highlight python %}
+
 def initialize(self, impl, time_func=None, **kwargs):
     super(PollIOLoop, self).initialize(**kwargs)
     self._impl = impl # _impl 代表 select.epoll()
@@ -153,23 +157,24 @@ def initialize(self, impl, time_func=None, **kwargs):
                      lambda fd, events: self._waker.consume(),
                      self.READ)
 
-```
+{% endhighlight %}
+
 函数最后创建了一个pipe,并将读一端加入回调中，这个管道只是发送无用数据(发送‘x’)。这样做可以在Tornado
 进入事件堵塞时，在没有网络IO事件或超时发生时，调用stop()时，主动发送数据可以唤醒堵塞，快速结束IOLoop.
 
-```python
+{% highlight python %}
 def add_handler(self, fd, handler, events):
     fd, obj = self.split_fd(fd) # 从文件对象中分离出文件描述符
     self._handlers[fd] = (obj, stack_context.wrap(handler)) # 将文件描述符添加到 _handlers 中
     self._impl.register(fd, events | self.ERROR) # 注册这个IO
-```
+{% endhighlight %}
 
 add_handler中，使用stack_context.wrap对回调处理器进行了包装，使处理器携带所在线程调用栈信息，这样当有
 异常出现时，Tornado可以倾泄调用栈信息。(StackContext类实现以后单独剖析)
 
 至此，IOLoop已经前戏准备就绪，接下来进入IOLoop.start().
 
-```python
+{% highlight python %}
 def start(self):
         if self._running:
             raise RuntimeError("IOLoop is already running")
@@ -332,17 +337,17 @@ def start(self):
             IOLoop._current.instance = old_current
             if old_wakeup_fd is not None:
                 signal.set_wakeup_fd(old_wakeup_fd)
-```
+{% endhighlight %}
 
 Tornado的IOLoop事件循环机制跟libevent是何其相似！
 最后，顺便说一下stop()函数：
 
-```python
+{% highlight python %}
 def stop(self):
     self._running = False
     self._stopped = True
     self._waker.wake()
-```
+{% endhighlight %}
 
     设置与循环相关的标志，然后调用self._waker.wake()发送一个'x'，唤醒epoll()，当再次执行循环时，
     条件不在成立，结束循环。
