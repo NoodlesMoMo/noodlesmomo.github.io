@@ -18,7 +18,7 @@ tags:
 
   《深入理解计算机系统》第二章讲述数据存储时，有一下程序。
 
-{% highlight c linenos%}
+{% highlight c %}
 
 #include <stdio.h>
 
@@ -66,7 +66,7 @@ int main()
 
 可通过一下简单验证：
 
-{% highlight c linenos%}
+{% highlight c %}
     char c = 0xd4;
     int i = c;
     assert(i == 0xffffffd4);
