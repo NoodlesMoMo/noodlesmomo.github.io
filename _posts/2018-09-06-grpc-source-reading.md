@@ -1,9 +1,9 @@
 ---
-title: grpc源码阅读
+title: grpc 名称发现与负载均衡
 author: Noodles
 layout: post
 comments: true
-permalink: /2018/09/grpc-source-reading-1
+permalink: /2018/09/grpc-name-resolve-loadbalance
 categories:
   - golang
 tags:
@@ -15,6 +15,8 @@ tags:
  ---------------------------------------------------
 
  *grpc目前代码几乎每天都在更新。这里是截止到2018-9-6号的最新代码, 版本是1.15-dev*
+
+
 
 ### ClientConn
 
@@ -29,7 +31,7 @@ type ClientConn struct {
 	target       string             // 连接目的地址
 	parsedTarget resolver.Target    // 解析后的目的地址
 	authority    string             // 认证相关
-	dopts        dialOptions
+	dopts        dialOptions        // 构建连接选项
 
     // 连接状态管理
 	csMgr        *connectivityStateManager
@@ -50,7 +52,7 @@ type ClientConn struct {
 
     // LB相关
     curBalancerName string
-	preBalancerName string // previous balancer name.
+    preBalancerName string // previous balancer name.
 	curAddresses    []resolver.Address  // 存储当前地址。当地址有更新时，用来做比较，如果相同则不做处理。
 	balancerWrapper *ccBalancerWrapper
 	retryThrottler  atomic.Value
@@ -199,4 +201,8 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 
   clients ---> proxy ---> backends
 
-  由Proxy充当调度，这类模型对clients和backends来说最简单，clients侧不需要做额外的工作。但这类模型需要通常会占用更多的资源，显著增加GRPC调用延迟。
+  由Proxy充当调度，这类模型对clients和backends来说最简单，clients侧不需要做额外的工作。比如, Nginx从1.13开始已经支持grpc反向代理。很明显，这类模型需要临时缓存请求和响应，需要通常会占用更多的资源，显著增加GRPC调用延迟。
+
+- Balanceing-aware Client
+
+  这种能够感知平衡调度的客户端模型
