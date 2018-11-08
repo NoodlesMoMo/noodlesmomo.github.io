@@ -117,3 +117,99 @@ tags:
 
   ![supervisord](/images/dev_ops/supervisor/supervisor_web.png) 
 
+
+### eventlistener
+
+  supervisor提供了一个eventlistener机制: 使用者可以配置自己感兴趣的进程状态，当被监控进程状态变化时，如果触发了相应的
+  进程状态，则会得到通知，进而采取相应动作。
+
+
+    [eventlistener:ime_mail]
+    command=/usr/bin/python /var/xxx_etcd/send_mail.py
+    #events=PROCESS_STATE,PROCESS_STATE_EXITED,PROCESS_STATE_STOPPED,PROCESS_STATE_BACKOFF,PROCESS_STATE_FATAL,PROCESS_STATE_UNKNOWN
+    events=PROCESS_STATE
+    environment=PATH="/usr/bin:/usr/local/bin"
+    user=root
+    directory=/var/xxx_etcd
+    numprocs=1
+    autorestart=true
+    stderr_logfile=/tmp/xxx_mail_stderr.log
+    stdout_logfile=/tmp/xxx_mail_stdout.log
+
+
+  **注意: 在配置eventlistener时，不要在这个段内配置redirect_stderr=True.在这里写的command脚本的正常工作需要从标准输入读取信息，
+  并且通过标准输出给supervisor反馈**
+
+  {% highlight python %}
+#!/usr/bin/python
+
+import sys
+import urllib
+import urllib2
+import socket
+import time
+from supervisor.childutils import listener
+
+
+def write_stdout(s):
+    sys.stdout.write(s)
+    sys.stdout.flush()
+
+
+def write_stderr(s):
+    sys.stderr.write(s)
+    sys.stderr.flush()
+
+
+def send_mail(mail_to, subject, content):
+    content = '''<html><head><h1>grpc etcd cluster warning<h1><br/></head><body><h3>Host: {}</h3></body></html>'''.format(content)
+
+    mail_param = {
+        "fr_name": "alarm",
+        "fr_addr": "xxx@gmail.com",
+        "title": subject,
+        "body": content,
+        "mode": "html",
+        "maillist": ";".join(mail_to),
+    }
+
+    email_srv = 'http://mail.portal.xxx/portal/tools/send_mail.php'
+    req = urllib2.Request(url=email_srv, data=urllib.urlencode(mail_param))
+    resp = urllib2.urlopen(req)
+    write_stderr("mail response: %s\n" % resp)
+
+
+def main(mail_to):
+    while True:
+        headers, body = listener.wait(sys.stdin, sys.stdout)
+        body = dict([pair.split(":") for pair in body.split(" ")])
+
+        host_name = socket.gethostname()
+        ip = socket.gethostbyname(host_name)
+
+        write_stderr("Headers: %r\n" % repr(headers))
+        write_stderr("Body: %r\n" % repr(body))
+
+        content = "Host: %s(%s)<br>Process: %s<br>PID: %s<br>Process state changed, from state: %s" % \
+                  (host_name, ip, body.get("processname"), body.get("pid"), body.get("from_state"))
+
+        subject = ' %s process state changed at %s' % (body.get("processname"), time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
+	    send_mail(mail_to, subject, content)
+
+        if headers["eventname"] == "PROCESS_STATE_STOPPING":
+            write_stderr("Process state stopping...\n")
+
+        # acknowledge the event
+        write_stdout("RESULT 2\nOK")
+
+
+if __name__ == "__main__":
+
+    mail_to = [
+        "xxx@gmail.com",
+    ]
+
+    main(mail_to)
+
+  {% endhighlight %}
