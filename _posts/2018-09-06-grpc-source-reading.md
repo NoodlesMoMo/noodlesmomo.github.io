@@ -602,3 +602,12 @@ func GetQCloudClient() proto.QcloudServiceClient {
 
   {% endhighlight %}
 
+  这里，etcd resolver插件的正确放置目录应该在`grpc/resolver`目录下。这里并未放到该目录下的原因是因为我们写的部分参数
+  暂时无法像grpc.DialContext(...)这种灵活地在上层传入。另外，版本管理造成麻烦。
+
+#### 几点注意
+
+  1. 从实现可以看出，只有定时地读写etcd，etcd不存在压力。
+  2. 如果后端服务一直正常运行(包括keepalive也正常)，则每次从etcd读取的配置有序。
+  3. client每次获取服务ip并非都要重建连接: gRPC内部会做比较，只有前后不一致时才会重建连接。
+  4. 当搭建的是etcd集群，etcd同一时间只能跟其中一个节点建立连接，当这个节点失败时，etcd client会跟集群的其他活跃节点建立连接。
