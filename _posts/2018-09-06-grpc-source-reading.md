@@ -17,192 +17,588 @@ tags:
  *grpc目前代码几乎每天都在更新。这里是截止到2018-9-6号的最新代码, 版本是1.15-dev*
 
 
+  在将`grpc`用在实际项目过程当中，碰到一系列问题，这些问题总结下来基本都与服务发现与负载均衡这个话题有关。
+  我将这些问题做一个简单的介绍，供将要采用grpc作为技术选型，或者已经遇到问题的开发者参考。一是确实有必要
+  做个总结；第二是抛砖引玉，共同探讨如何将grpc用得更好，更能可靠有效的解决实际问题。
 
-### ClientConn
+
+  简化的服务架构如下:
+
+  ![base_arch](/images/2018/0916/base_arch.png)
+
+  上图中，gateway是一组go服务，它除用来做接入控制之外，其中还有项重要工作就是协议转换：对外提供`HTTP`请求，并将其转换为RPC调用请求具体
+  上游微服务。
+
+  具体到实际项目中，上游微服务作为gRPC的server端，它负责具体业务逻辑；gateway作为gRPC的client端，将http请求组装成gRPC请求发起RPC调用。
+
+  最后一公里，如何铺设gRPC?
+
+  主要有两种方案: 
+  
+  - 服务发现与负载均衡都由client来实现: micro-service启动时向gateway注册，由gateway根据注册情况向micro-service发起调用。
+  - 通过代理隔离两组服务，服务发现与负载均衡均交由代理来解决。
+  - 服务发现借助其他服务，比如DNS，etcd等组件，client侧自己决定如何调度请求。
+
+  先说第一种情况,很明显两组服务之间存在严重耦合，下下策。
+
+  第二种情况看起来最为省心: 两者隔离，烦心事全交给代理来操心。
+
+  第三种方案看起来稍稍比第一种方案好一些，但仍然麻烦，不过好在gRPC内部已经实现了一个基本的`round-robin`负载均衡实现。也实现了使用
+  DNS作为负载均衡的服务发现插件。
+
+  我们首先尝试了第二种方案。万金油nginx从1.13版本之后宣布支持`gRPC`负载均衡。
+
+  [Introducing gRPC Support with NGINX 1.13.10](https://www.nginx.com/blog/nginx-1-13-10-grpc/)
+
+  nginx配置中增加`grpc_pass`,使用方式与`proxy_pass`一致:
+
+    worker_processes  1;
+    events {
+        worker_connections  1024;
+    }
+
+    http {
+        include       mime.types;
+        default_type  application/octet-stream;
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+
+        error_log   logs/error.log debug;
+        access_log  logs/access.log  main;
+
+        sendfile        on;
+        keepalive_timeout  65;
+
+        upstream grpc_servers {
+            #least_conn;
+            #keepalive 1000;
+            server 127.0.0.1:10006;
+        }
+        server {
+            listen       8080 http2;
+            server_name  localhost;
+            #access_log  logs/host.access.log  main;
+            location / {
+                grpc_pass grpc://grpc_servers;
+                error_page 502 = /error502grpc;
+            }
+
+            location = /error502grpc {
+                internal;
+                default_type application/grpc;
+                add_header grpc-status 14;
+                add_header grpc-message "unavailable";
+                return 204;
+            }
+        }
+    }
+
+  现在的架构变成这样:
+
+  ![nginx grpc_pass proxy](/images/2018/0916/nginx_grpc_pass.png)
+
+  发起请求，从`gateway` <---> `nginx` <---> `A serivce-providor`, 表面看起来一切正常，发起请求，也成功得到返回，但存在问题：
+
+  **只有1处是长连接，2处的连接是短连接！**
+
+  因为1处是长连接，请求源源不断到达。当后端的微服务部署上线时（微服务ip跑在k8s中，IP经常变动），nginx reload迟迟无法正常结束。
+  每次请求结束，2处nginx立马断开连接，造成nginx堆积大量`TIME_WAIT`。一个简单的配置接口，nginx侧有2万多的TIME_WAIT连接状态。
+
+  nginx reload这个问题可以设置`worker_shutdown_timeout`参数，控制nginx优雅关闭时间，避免长时间一直处于shutdown状态,勉强算是可用。
+
+  但对于grpc短连接这个问题，目前暂时无法解决。
+
+  nginx宣称的支持gRPC成了鸡肋，不过，好在nginx还提供了L4层代理。可使用`stream`块让nginx不对应用层做解析
+
+    worker_processes  1;
+    error_log logs/debug.log debug;
+    events {
+        worker_connections  1024;
+    }
+
+    stream {
+        access_log  logs/access2.log  main;
+
+        upstream grpc_backends {
+            server localhost:10006;
+            #server localhost:10008;
+        }
+        server {
+            listen 8080;
+            proxy_pass grpc_backends;
+        }
+    }
+
+    http {
+        include       mime.types;
+        default_type  application/octet-stream;
+
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+
+        access_log  logs/access.log  main;
+
+        sendfile        on;
+        keepalive_timeout  65;
+
+        upstream http_backends {
+            server localhost:10005;
+        }
+
+        server {
+            listen       8000;
+            server_name  localhost;
+
+            location / {
+                proxy_pass http://http_backends;
+            }
+        }
+    }
+
+  不过这种方式没法使用nginx来做成统一的监控。运维对nginx L4层代理还未做统一规划。
+
+  用nginx做代理这个方案暂时止步到这。接下来，说下第二种方案的具体实施过程，这也是目前我们采取的方式。
+
+
+  目前，我们采用**etcd做服务发现，client侧做负载均衡**。
+
+  架构图变成这样:
+
+  ![etcd discory](/images/2018/0916/etcd_grpc.png)
+
+  流程大致是这样: 
+  1. 微服务启动时，自动向etcd注册，申请租约并定时维持。
+  2. gateway订阅某个服务，定时获取某个服务名称下的所有机器，与之建立连接，定时更新。
+  3. 当请求到来时，client在活跃机器中做轮询调用。
+
+  具体实现：
+
+#### 服务注册代码
 
 {% highlight go %}
 
-type ClientConn struct {
+package rpc
 
-    // ctx, cancel引用标准库context中的结构，用来管理超时
+import (
+	"context"
+	"net"
+	"os"
+	"time"
+	"strings"
+	"fmt"
+	"errors"
+
+	"git.sogou-inc.com/iweb/go-util"
+	"git.sogou-inc.com/iweb/ime-ucenter/rpc/proto"
+	"github.com/coreos/etcd/clientv3"
+	"google.golang.org/grpc"
+)
+
+func init() {
+	go RPCServeForever()
+}
+
+func RPCServeForever() error {
+	var (
+		err      error
+		listener net.Listener
+	)
+
+	srv := grpc.NewServer()
+
+	proto.RegisterQcloudServiceServer(srv, new(QCloudRpcServer))
+
+	if listener, err = net.Listen("tcp4", util.AppConfig.RpcListen); err != nil {
+		return err
+	}
+
+	fmt.Println("[D] rpc will serve on %s", util.AppConfig.RpcListen)
+
+	/* stupid but useful */
+	go registerMyself(5)
+
+	return srv.Serve(listener)
+}
+
+func registerMyself(ttl int64) {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   util.AppConfig.ETCDCluster,
+		DialTimeout: 3 * time.Second,
+	})
+
+	if err != nil {
+		util.BhAlarm(util.BH_LOG_SYSTEM, err, "New etcd client error")
+		panic(err)
+	}
+
+	_myself := myself()
+	resp := NewLeaseGrant(cli, _myself, ttl*2)
+
+	stop := make(chan struct{})
+	util.RegistExitHook(func() error {
+		stop <- struct{}{}
+		if cli == nil {
+			return nil
+		}
+
+		defer cli.Close()
+
+		if delResp, err := cli.Delete(context.TODO(), _myself); err == nil {
+			fmt.Println("sai yo na ra:", delResp)
+		}
+
+		return err
+	})
+
+	t := time.NewTicker(time.Duration(ttl) * time.Second)
+
+	for {
+		select {
+		case <-t.C:
+			kres, e := cli.KeepAliveOnce(context.TODO(), resp.ID)
+			if e != nil {
+                fmt.Fprintf(os.stderr, "[E] keepalive_once error: %s", e.Error())
+				// bugfix: 重新注册
+				// 某次观察到etcd集群工作正常，但keepAliveOnce一直维持不住导致服务不可用
+				resp = NewLeaseGrant(cli, _myself, 2*ttl)
+			} else {
+				fmt.Println("[D] keepalive response, version:", kres.Revision, "raft_term:", kres.RaftTerm)
+			}
+		case <-stop:
+			t.Stop()
+			fmt.Println("Oops: goodbye")
+			return
+		}
+	}
+
+	return
+}
+
+func myself() string {
+	hostName, _ := os.Hostname()
+	return `/xxx_service/` + hostName
+}
+
+// FIXME: the first one ?
+func getLocalIPV4Addr(port string) string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, addr := range addrs {
+		if ip, ok := addr.(*net.IPNet); ok && !ip.IP.IsLoopback() {
+			if ip.IP.To4() == nil {
+				continue
+			}
+
+			if strings.HasPrefix(port, ":") {
+				return ip.IP.String() + port
+			}
+
+			return net.JoinHostPort(ip.IP.String(), port)
+		}
+	}
+
+	return ""
+}
+
+func NewLeaseGrant(client *clientv3.Client, value string, ttl int64) *clientv3.LeaseGrantResponse {
+	if client == nil {
+		panic(errors.New("Invalid etcd client"))
+	}
+
+	resp, err := client.Grant(context.TODO(), ttl*2) // must longer
+	if err != nil {
+		util.BhAlarm(util.BH_LOG_SYSTEM, err, "Grant ucenter error")
+		panic(err)
+	}
+
+	_, err = client.Put(context.TODO(), value, getLocalIPV4Addr(util.AppConfig.RpcListen), clientv3.WithLease(resp.ID))
+	if err != nil {
+		util.BhAlarm(util.BH_LOG_SYSTEM, err, "Put myself into etcd cluster error")
+		panic(err)
+	}
+
+	return resp
+}
+
+{% endhighlight %}
+
+
+#### etcd resolver
+
+  截止目前，官方暂时还未实现etcd的名称解析。要想使用etcd，目前需要自己实现。
+
+  {% highlight go %}
+
+package resolver
+
+import (
+	"context"
+	"errors"
+	"net"
+	"sync"
+	"time"
+
+	"strings"
+
+	"github.com/coreos/etcd/clientv3"
+	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/resolver"
+)
+
+const (
+	defaultPort = "2379"
+)
+
+var (
+	defaultMinFrequency = 120 * time.Second
+)
+
+func init() {
+}
+
+type etcdBuilder struct {
+	watchKeyPrefix string
+}
+
+func NewETCDBuilder() resolver.Builder {
+	return &etcdBuilder{}
+}
+
+func RegisterResolver(keyPrefix string) {
+	builder := &etcdBuilder{watchKeyPrefix: keyPrefix}
+
+	resolver.Register(builder)
+}
+
+func (b *etcdBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOption) (resolver.Resolver, error) {
+	etcdProxys, err := parseTarget(target.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	grpclog.Infoln("etcd resolver, endpoints:", etcdProxys)
+
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   etcdProxys,
+		DialTimeout: 3 * time.Second,
+	})
+	if err != nil {
+		return nil, errors.New("connect to etcd proxy error")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	rlv := &etcdResolver{
+		cc:             cc,
+		cli:            cli,
+		ctx:            ctx,
+		cancel:         cancel,
+		watchKeyPrefix: b.watchKeyPrefix,
+		freq:           5 * time.Second,
+		t:              time.NewTimer(0),
+		rn:             make(chan struct{}, 1),
+		im:             make(chan []resolver.Address),
+		wg:             sync.WaitGroup{},
+	}
+
+	rlv.wg.Add(2)
+	go rlv.watcher()
+	go rlv.FetchBackendsWithWatch()
+
+	return rlv, nil
+}
+
+func (b *etcdBuilder) Scheme() string {
+	return "etcd"
+}
+
+type etcdResolver struct {
+	retry  int
+	freq   time.Duration
 	ctx    context.Context
 	cancel context.CancelFunc
+	cc     resolver.ClientConn
+	cli    *clientv3.Client
+	t      *time.Timer
 
-	target       string             // 连接目的地址
-	parsedTarget resolver.Target    // 解析后的目的地址
-	authority    string             // 认证相关
-	dopts        dialOptions        // 构建连接选项
+	watchKeyPrefix string
 
-    // 连接状态管理
-	csMgr        *connectivityStateManager
+	rn chan struct{}
+	im chan []resolver.Address
 
-	balancerBuildOpts balancer.BuildOptions // 负载均衡选项
-	resolverWrapper   *ccResolverWrappe     // 地址解析
-	blockingpicker    *pickerWrapper
-
-    // 服务侧配置
-	mu    sync.RWMutex
-	sc    ServiceConfig // 已废弃
-	scRaw string
-
-	conns map[*addrConn]struct{}
-	
-    // Keepalive parameter can be updated if a GoAway is received.
-	mkp             keepalive.ClientParameters
-
-    // LB相关
-    curBalancerName string
-    preBalancerName string // previous balancer name.
-	curAddresses    []resolver.Address  // 存储当前地址。当地址有更新时，用来做比较，如果相同则不做处理。
-	balancerWrapper *ccBalancerWrapper
-	retryThrottler  atomic.Value
-
-	channelzID int64 // channelz unique identification number
-	czData     *channelzData
+	wg sync.WaitGroup
 }
 
-{% endhighlight %}
-
-看这个连接的创建:
-
-{% highlight go %}
-func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *ClientConn, err error) {
-	cc := &ClientConn{
-		target:         target,
-		csMgr:          &connectivityStateManager{},
-		conns:          make(map[*addrConn]struct{}),
-		dopts:          defaultDialOptions(),
-		blockingpicker: newPickerWrapper(),
-		czData:         new(channelzData),
+func (r *etcdResolver) ResolveNow(opt resolver.ResolveNowOption) {
+	select {
+	case r.rn <- struct{}{}:
+	default:
 	}
-	cc.retryThrottler.Store((*retryThrottler)(nil))
-	cc.ctx, cc.cancel = context.WithCancel(context.Background())
+}
 
-	for _, opt := range opts {
-		opt.apply(&cc.dopts)
-	}
+func (r *etcdResolver) Close() {
+	r.cancel()
+	r.wg.Wait()
+	r.t.Stop()
+}
 
-	cc.mkp = cc.dopts.copts.KeepaliveParams
+func (r *etcdResolver) watcher() {
+	defer r.wg.Done()
 
-	if cc.dopts.copts.Dialer == nil {
-		cc.dopts.copts.Dialer = newProxyDialer(
-			func(ctx context.Context, addr string) (net.Conn, error) {
-				network, addr := parseDialTarget(addr)
-				return dialContext(ctx, network, addr)
-			},
-		)
-	}
-
-	if cc.dopts.copts.UserAgent != "" {
-		cc.dopts.copts.UserAgent += " " + grpcUA
-	} else {
-		// 设置UA
-		cc.dopts.copts.UserAgent = grpcUA
-	}
-
-	defer func() {
+	for {
 		select {
-		case <-ctx.Done():
-			conn, err = nil, ctx.Err()
-		default:
-		}
-
-		if err != nil {
-			cc.Close()
-		}
-	}()
-
-	// 设置重新建立连接的最大时间间隔，默认为120秒
-	if cc.dopts.bs == nil {
-		cc.dopts.bs = backoff.Exponential{
-			MaxDelay: DefaultBackoffConfig.MaxDelay,
-		}
-	}
-
-	if cc.dopts.resolverBuilder == nil {
-		// Only try to parse target when resolver builder is not already set.
-		cc.parsedTarget = parseTarget(cc.target)
-		grpclog.Infof("parsed scheme: %q", cc.parsedTarget.Scheme)
-		cc.dopts.resolverBuilder = resolver.Get(cc.parsedTarget.Scheme)
-		if cc.dopts.resolverBuilder == nil {
-			// If resolver builder is still nil, the parse target's scheme is
-			// not registered. Fallback to default resolver and set Endpoint to
-			// the original unparsed target.
-			grpclog.Infof("scheme %q not registered, fallback to default scheme", cc.parsedTarget.Scheme)
-
-			// 如果未设置`schema`,则使用默认的`passthrough`
-			cc.parsedTarget = resolver.Target{
-				Scheme:   resolver.GetDefaultScheme(),
-				Endpoint: target,
+		case <-r.ctx.Done():
+			return
+		case addrs := <-r.im:
+			if len(addrs) > 0 {
+				r.retry = 0
+				r.t.Reset(r.freq)
+				r.cc.NewAddress(addrs)
+				continue
 			}
-			cc.dopts.resolverBuilder = resolver.Get(cc.parsedTarget.Scheme)
+		case <-r.t.C:
+		case <-r.rn:
 		}
-	} else {
-		cc.parsedTarget = resolver.Target{Endpoint: target}
-	}
-	creds := cc.dopts.copts.TransportCredentials
-	if creds != nil && creds.Info().ServerName != "" {
-		cc.authority = creds.Info().ServerName
-	} else if cc.dopts.insecure && cc.dopts.authority != "" {
-		cc.authority = cc.dopts.authority
-	} else {
-		// Use endpoint from "scheme://authority/endpoint" as the default
-		// authority for ClientConn.
-		cc.authority = cc.parsedTarget.Endpoint
-	}
 
-	cc.balancerBuildOpts = balancer.BuildOptions{
-		DialCreds:        credsClone,
-		Dialer:           cc.dopts.copts.Dialer,
-		ChannelzParentID: cc.channelzID,
-	}
+		result := r.FetchBackends()
 
-	// Build the resolver.
-	cc.resolverWrapper, err = newCCResolverWrapper(cc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build resolver: %v", err)
-	}
-	// Start the resolver wrapper goroutine after resolverWrapper is created.
-	//
-	// If the goroutine is started before resolverWrapper is ready, the
-	// following may happen: The goroutine sends updates to cc. cc forwards
-	// those to balancer. Balancer creates new addrConn. addrConn fails to
-	// connect, and calls resolveNow(). resolveNow() tries to use the non-ready
-	// resolverWrapper.
-	cc.resolverWrapper.start()
-
-	// A blocking dial blocks until the clientConn is ready.
-	if cc.dopts.block {
-		for {
-			s := cc.GetState()
-			if s == connectivity.Ready {
-				break
-			}
-			if !cc.WaitForStateChange(ctx, s) {
-				// ctx got timeout or canceled.
-				return nil, ctx.Err()
-			}
+		if len(result) == 0 {
+			r.retry++
+			r.t.Reset(r.freq)
+		} else {
+			r.retry = 0
+			r.t.Reset(r.freq)
 		}
-	}
 
-	return cc, nil
+		r.cc.NewAddress(result)
+	}
 }
 
-{% endhighlight %}
+func (r *etcdResolver) FetchBackendsWithWatch() {
+	defer r.wg.Done()
 
-### GRPC负载均衡
+	for {
+		select {
+		case <-r.ctx.Done():
+			return
+		case _ = <-r.cli.Watch(r.ctx, r.watchKeyPrefix, clientv3.WithPrefix()):
+			result := r.FetchBackends()
+			r.im <- result
+		}
+	}
+}
 
-  **GRPC的负载均衡针对的是每次的请求调用，而不是每个连接: 即使所有的请求都是在一条连接，GRPC负载均衡的目标也是将这条连接的所有请求均衡到后端服务中。**
+func (r *etcdResolver) FetchBackends() []resolver.Address {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
+	result := make([]resolver.Address, 0)
 
-#### 三种典型的负载均衡模型
+	resp, err := r.cli.Get(ctx, r.watchKeyPrefix, clientv3.WithPrefix())
+	if err != nil {
+		grpclog.Errorln("Fetch etcd proxy error:", err)
+		return result
+	}
 
-- 代理模型(Proxy Model)
+	for _, kv := range resp.Kvs {
+		if strings.TrimSpace(string(kv.Value)) == "" {
+			continue
+		}
+		result = append(result, resolver.Address{Addr: string(kv.Value)})
+	}
 
-  clients ---> proxy ---> backends
+	grpclog.Infoln(">>>>> endpoints fetch: ", result)
 
-  由Proxy充当调度，这类模型对clients和backends来说最简单，clients侧不需要做额外的工作。比如, Nginx从1.13开始已经支持grpc反向代理。很明显，这类模型需要临时缓存请求和响应，需要通常会占用更多的资源，显著增加GRPC调用延迟。
+	return result
+}
 
-- Balanceing-aware Client
+func parseTarget(target string) ([]string, error) {
+	var (
+		endpoints = make([]string, 0)
+	)
 
-  这种能够感知平衡调度的客户端模型
+	if target == "" {
+		return nil, errors.New("invalid target")
+	}
+
+	for _, endpoint := range strings.Split(target, ",") {
+		if ip := net.ParseIP(endpoint); ip != nil {
+			endpoints = append(endpoints, net.JoinHostPort(endpoint, defaultPort))
+			continue
+		}
+
+		if _, port, err := net.SplitHostPort(endpoint); err == nil {
+			if port == "" {
+				return endpoints, errors.New("Invalid address format")
+			}
+			endpoints = append(endpoints, endpoint)
+		}
+	}
+
+	return endpoints, nil
+}
+
+  {% endhighlight %}
+
+#### gRPC client
+  
+  {% highlight go %}
+
+package rpc
+
+import (
+	"context"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/grpclog"
+	"os"
+)
+
+const (
+	const_grpc_lbname = `round_robin`
+)
+
+var (
+	qcloudRpcClient proto.QcloudServiceClient
+)
+
+func init() {
+
+    //将插件注册进gRPC
+	resolver.RegisterResolver("/xxx_server/")
+
+	keepAlive := keepalive.ClientParameters{
+		10 * time.Second,
+		20 * time.Second,
+		true,
+	}
+
+	etcdCluster := "etcd:///" + util.AppConfig.ETCDCluster // 指定使用etcd来做名称解析
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+    // grpc.WithInsecure: 不使用安全连接
+    // grpc.WithBalancerName("round_robin"), 轮询机制做负载均衡
+    // grpc.WithBlock: 握手成功才返回
+    // grpc.WithKeepaliveParams: 连接保活，防止因为长时间闲置导致连接不可用
+	conn, err := grpc.DialContext(ctx, etcdCluster, grpc.WithInsecure(), grpc.WithBalancerName(const_grpc_lbname),
+		grpc.WithBlock(), grpc.WithKeepaliveParams(keepAlive))
+	if err != nil {
+		panic(err)
+	}
+
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stdout, os.Stderr, os.Stderr, 9))
+	qcloudRpcClient = proto.NewQcloudServiceClient(conn)
+}
+
+func GetQCloudClient() proto.QcloudServiceClient {
+	return qcloudRpcClient
+}
+
+  {% endhighlight %}
+
