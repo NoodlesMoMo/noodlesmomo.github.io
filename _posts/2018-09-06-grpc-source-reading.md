@@ -169,9 +169,11 @@ tags:
   2. gateway订阅某个服务，定时获取某个服务名称下的所有机器，与之建立连接，定时更新。
   3. 当请求到来时，client在活跃机器中做轮询调用。
 
-  具体实现：
+### 具体实现
 
+-----------------------------------------------
 #### 服务注册代码
+-----------------------------------------------
 
 {% highlight go %}
 
@@ -321,8 +323,9 @@ func NewLeaseGrant(client *clientv3.Client, value string, ttl int64) *clientv3.L
 
 {% endhighlight %}
 
-
+-----------------------------------------------
 #### etcd resolver
+-----------------------------------------------
 
   截止目前，官方暂时还未实现etcd的名称解析。要想使用etcd，目前需要自己实现。
 
@@ -538,7 +541,13 @@ func parseTarget(target string) ([]string, error) {
 
   {% endhighlight %}
 
+---------------------------------------------------
 #### gRPC client
+---------------------------------------------------
+
+  gRPC包目前已实现`DNS Resolver`, `round-robin`负载均衡。其在`grpc/clientconn.go`文件中导入初始化。
+
+  ![grpc import init](/images/2018/0916/grpc_client_import.png)
   
   {% highlight go %}
 
@@ -599,7 +608,9 @@ func GetQCloudClient() proto.QcloudServiceClient {
   这里，etcd resolver插件的正确放置目录应该在`grpc/resolver`目录下。这里并未放到该目录下的原因是因为我们写的部分参数
   暂时无法像grpc.DialContext(...)这种灵活地在上层传入。另外，版本管理造成麻烦。
 
+-----------------------------
 #### 几点注意
+-----------------------------
 
   1. 从实现可以看出，只有定时地读写etcd，etcd不存在压力。
   2. 如果后端服务一直正常运行(包括keepalive也正常)，则每次从etcd读取的配置有序。
