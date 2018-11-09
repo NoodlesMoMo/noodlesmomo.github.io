@@ -186,8 +186,6 @@ import (
 	"fmt"
 	"errors"
 
-	"git.sogou-inc.com/iweb/go-util"
-	"git.sogou-inc.com/iweb/ime-ucenter/rpc/proto"
 	"github.com/coreos/etcd/clientv3"
 	"google.golang.org/grpc"
 )
