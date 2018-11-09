@@ -539,6 +539,10 @@ func parseTarget(target string) ([]string, error) {
   {% endhighlight %}
 
 #### gRPC client
+
+  gRPC包目前已实现了`DNS resolver`, `round-robin`负载均衡。其在client中导入时初始化。
+
+  ![grpc import init](/images/2018/0916/grpc_client_import.png)
   
   {% highlight go %}
 
