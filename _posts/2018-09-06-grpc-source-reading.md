@@ -539,10 +539,6 @@ func parseTarget(target string) ([]string, error) {
   {% endhighlight %}
 
 #### gRPC client
-
-  gRPC包目前已实现了`DNS resolver`, `round-robin`负载均衡。其在client中导入时初始化。
-
-  ![grpc import init](/images/2018/0916/grpc_client_import.png)
   
   {% highlight go %}
 
@@ -609,3 +605,6 @@ func GetQCloudClient() proto.QcloudServiceClient {
   2. 如果后端服务一直正常运行(包括keepalive也正常)，则每次从etcd读取的配置有序。
   3. client每次获取服务ip并非都要重建连接: gRPC内部会做比较，只有前后不一致时才会重建连接。
   4. 当搭建的是etcd集群，etcd同一时间只能跟其中一个节点建立连接，当这个节点失败时，etcd client会跟集群的其他活跃节点建立连接。
+  5. 如果docker无法做到在固定pod上调度，要将etcd部署到虚机或者物理机器上，防止漂移造成数据丢失。
+  6. 如果提供gRPC服务的机器部署在docker上，要保证每个容器都有独立IP，否则无法负载均衡。
+  7. 注意etcd集群的访问控制: 测试与生产环境的注册目录要区分。
