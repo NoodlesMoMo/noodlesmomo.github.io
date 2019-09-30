@@ -156,7 +156,7 @@ footer {
     background-color: #fff;
     border: 1px solid #ddd;
     border-right-color: transparent;
-}
+
 
 .nav-tabs-vertical>li>a {
     line-height: 1.428571429;
@@ -181,3 +181,16 @@ ul.dropdown-menu>li>a>i.fa {
     width: 1.3em;
 }
 
+.article_body blockquote {
+    border-left: 3px solid #eee !important;
+    font-size: 10px !important;
+}
+
+.article_body>blockquote>p {
+    font-size: 13px;
+    font-style: italic;
+}
+
+h4, h5, h6 {
+    margin-top: 30px;
+}
