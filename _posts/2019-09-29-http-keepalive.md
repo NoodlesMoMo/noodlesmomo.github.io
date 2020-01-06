@@ -17,6 +17,56 @@ tags:
   HTTP的keep alive相关的概念比较有迷惑性，本文通过实际例子，一步一步探索整理下相关的知识。
 
 
+### HTTP connection首部
+
+  HTTP从客户端发出请求，到接收到服务发来的响应，在这过程中会经过一连串的HTTP中间实体（代理，高速缓存）等。
+  相应的，HTTP首部字段将定义成缓存代理和非缓存代理的行为，分成两种类型:
+
+  **端到端首部（end-to-end Header）**: 首部会转发给请求/响应对应的最终接收目标，且保存在由缓存生成的响应中，另外规定它被发。
+
+  **逐跳首部（hop-by-hop header）**: 首部只对单次转发有效，会因通过缓存或者代理而不再转发。
+
+  HTTP/1.1和之后的版本中，如果要使用`hop-by-hop`首部，需要提供`Connection`首部字段。
+
+  除以下8个首部字段外，其它所有字段都属于端到端首部:
+
+  **hop-by-hop header**
+  ```bash
+  Connection
+  Keep-Alive
+  Proxy-Authenticate
+  Proxy-Authorization
+  Trailer
+  TE
+  Transfer-Encoding
+  Upgrade
+  ```
+
+  Connection 头（header） 决定当前的事务完成后，是否会关闭网络连接。如果该值是“keep-alive”，网络连接就是持久的，不会关闭，使得对同一个服务器的请求可以继续在该连接上完成。
+
+  除去标准的逐段传输（hop-by-hop）头（Keep-Alive, Transfer-Encoding, TE, Connection, Trailer, Upgrade, Proxy-Authorization and Proxy-Authenticate），任何逐段传输头都需要在 Connection 头中列出，这样才能让第一个代理知道必须处理它们且不转发这些头。标准的逐段传输头也可以列出（常见的例子是 Keep-Alive，但这不是必须的）。
+
+
+  **语法**
+
+  ```bash
+  Connection: keep-alive
+  Connection: close
+  ```
+
+  **指令**
+  
+  `close`
+
+  表明客户端或服务器想要关闭该网络连接，这是HTTP/1.0请求的默认值
+
+
+  `以逗号分隔的HTTP头 [通常仅有 keep-alive]`
+
+  表明客户端想要保持该网络连接打开，HTTP/1.1的请求默认使用一个持久连接。
+  这个请求头列表由头部名组成，这些头将被第一个非透明的代理或者代理间的缓存所移除：这些头定义了发出者和第一个实体之间的连接，而不是和目的地节点间的连接。
+
+
 ### Nginx keep alive
 ---------------------
 
@@ -206,3 +256,19 @@ DEBUG:urllib3.connectionpool:http://10.143.47.227:9090 "GET /index.html HTTP/1.1
   2. `keepalive_requests`这个值根据实际情况，如果nginx下游是用户，则这个值默认值通常来说够用了。但如果面向的是为其它server提供服务，这个值太过保守了，应该设置更大更大些。
   3. `keepalive_timeout`这个值通常保持默认即可，不应设置过小，如果服务QPS比较高，过小会导致nginx产生大量的`TIME_WAIT`，效率不高。
 
+
+### 常被误解的Connection首部
+
+  这部分内容来自《http权威指南》。
+
+#### http/1.0 + keep-alive
+
+  `keep-alive`已经不再使用了，而且在当前的`HTTP/1.1`规范中也没有对它的说明了。但浏览器和服务器对`keep-alive`握手支持仍然相当广泛。这里看下`HTTP/1.0`时代是如何处理的:
+
+  实现`HTTP/1.0 Keep-alive`连接的客户端可以通过包含`Connection: Keep-Alive`首部请求将一条连接保持在打开状态。
+
+  如果服务器愿意为下一条请求维持这个连接，就在响应中包含相同的首部`Connection: Keep-Alive`。如果没有，则客户端认为服务器不支持Keep-Alive，会在发回ACK后关闭连接。
+
+
+
+  
