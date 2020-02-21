@@ -1,126 +1,16 @@
-<!-- <link rel="stylesheet" href="/assets/css/rouge.css"> -->
-<link rel="stylesheet" href="/assets/styles/monokai-sublime.css">
-<script src="/assets/js/highlight.pack.js"></script>
-<script>hljs.initHighlightingOnLoad();</script>
 
-<div class="page-header">
-  <h1>{{ page.title }} {% if page.tagline %}<small>{{page.tagline}}</small>{% endif %}</h1>
-</div>
-
-<article>
-	<div class="col-sm-12">
-	 <span class="post-date">
-	   {% assign d = page.date | date: "%d" | plus:'0' %}
-	   {{ page.date | date: "%B" }}
-	   {% case d %}
-	     {% when 1 or 21 or 31 %}{{ d }}st,
-	     {% when 2 or 22 %}{{ d }}nd,
-	     {% when 3 or 23 %}{{ d }}rd,
-	     {% else %}{{ d }}th,
-	   {% endcase %}
-	   {{ page.date | date: "%Y" }}
-	 </span>
-	  <div class="article_body">
-	  {{ content }}
-	  </div>
-
-		{% unless page.categories == empty %}
-		<ul class="tag_box list-unstyled list-inline">
-		  <li><i class="fa fa-folder-open"></i></li>
-		  {% assign categories_list = page.categories %}
-		  {% if categories_list.first[0] == null %}
-			{% for category in categories_list %}
-				<li><a href="{{ site.BASE_PATH }}/{{ site.categories_path }}#{{ category }}-ref">
-					{{ category | join: "/" }} <span>({{ site.categories[category].size }})</span>
-					{% unless forloop.last %},{% endunless %}
-				</a></li>
-			{% endfor %}
-		  {% else %}
-			{% for category in categories_list %}
-				<li><a href="{{ site.BASE_PATH }}/{{ site.categories_path }}#{{ category[0] }}-ref">
-					{{ category[0] | join: "/" }} <span>/{{ category[1].size }})</span>
-				</a></li>
-			{% endfor %}
-		  {% endif %}
-		</ul>
-		{% endunless %}
-
-		{% unless page.tags == empty %}
-		<ul class="list-inline">
-		  <li><i class="fa fa-tags"></i></li>
-		  {% assign tags_list = page.tags %}
-		  {% if tags_list.first[0] == null %}
-			{% for tag in tags_list %}
-				<li>
-					<a href="{{ site.BASE_PATH }}/{{ site.tags_path }}#{{ tag }}-ref">
-					{{ tag }} <span>({{ site.tags[tag].size }})</span>
-					{% unless forloop.last %},{% endunless %}
-					</a>
-				</li>
-			{% endfor %}
-		  {% else %}
-			{% for tag in tags_list %}
-				<li>
-					<a href="{{ site.BASE_PATH }}/{{ site.tags_path }}#{{ tag[0] }}-ref">
-						{{ tag[0] }} <span>({{ tag[1].size }})</span>
-						{% unless forloop.last %},{% endunless %}
-					</a>
-				</li>
-
-			{% endfor %}
-		  {% endif %}
-		  {% assign tags_list = nil %}
-		</ul>
-		{% endunless %}
-
-		<hr>
-    <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_tqq" data-cmd="tqq" title="分享到腾讯微博"></a><a href="#" class="bds_renren" data-cmd="renren" title="分享到人人网"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a></div>
-    <script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdPic":"","bdStyle":"0","bdSize":"16"},"share":{}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
-
-    {% if page.comments %}
-    <div id="disqus_thread"></div>
-    <script>
-    /**
-    *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
-    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
-    /*
-    var disqus_config = function () {
-    this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
-    this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
-    };
-    */
-    (function() { // DON'T EDIT BELOW THIS LINE
-    var d = document, s = d.createElement('script');
-    s.src = 'https://manguijie-top.disqus.com/embed.js';
-    s.setAttribute('data-timestamp', +new Date());
-    (d.head || d.body).appendChild(s);
-    })();
-    </script>
-    <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-
-    <script id="dsq-count-scr" src="//manguijie-top.disqus.com/count.js" async></script>
+<div id="posts" class="posts-expand">
+  {% assign post = page %}
+  {% include _macro/post.html %}
+  <div class="post-spread">
+    {% if site.jiathis %}
+      {% include _partials/share/jiathis.html %}
+    {% elsif site.baidushare %}
+      {% include _partials/share/baidushare.html %}
+    {% elsif site.add_this_id %}
+      {% include _partials/share/add-this.html %}
+    {% elsif site.duoshuo_shortname and site.duoshuo_share %}
+      {% include _partials/share/duoshuo_share.html %}
     {% endif %}
-
-    <div class="clearfix"></div>
-
-		<ul class="pager">
-		  {% if page.previous %}
-		  <li class="previous"><a href="{{ site.BASE_PATH }}{{ page.previous.url }}" title="{{ page.previous.title }}">&larr; Previous</a></li>
-		  {% else %}
-		  <li class="previous disabled"><a>&larr; Previous</a></li>
-		  {% endif %}
-		  {% if page.next %}
-		  <li class="next"><a href="{{ site.BASE_PATH }}{{ page.next.url }}" title="{{ page.next.title }}">Next &rarr;</a></li>
-		  {% else %}
-			<li class="next disabled"><a>Next &rarr;</a>
-		  {% endif %}
-		</ul>
-
-		<hr>
-	</div>
-
-	<div class="col-sm-2 sidebar-2">
-
-	</div>
-</article>
-<div class="clearfix"></div>
+  </div>
+</div>

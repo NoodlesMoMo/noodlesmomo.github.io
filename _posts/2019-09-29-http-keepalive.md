@@ -183,11 +183,10 @@ DEBUG:urllib3.connectionpool:Resetting dropped connection: 10.143.47.227
 ```
 以下是抓包结果:
 
-  ![keepalive1](/images/2019/0930/keepalive.png)
+  ![](http://q61qnv6m4.bkt.clouddn.com/2019%2F0930%2Fkeepalive.png)
 
   **⚠️注意: 此处并不是nginx主动关闭，而是由客户端发起的FIN包。**
 
-  <center><img src="/images/2019/0930/keepalive2.png" width="400"/></center>
 
   nginx在第7个包的响应中设置了`Connection: close`。
 
@@ -246,9 +245,9 @@ DEBUG:urllib3.connectionpool:http://10.143.47.227:9090 "GET /index.html HTTP/1.1
 可以看到每次都需要重建连接。但这种情况与到达`keepalive_requests`预设值不同，前者主动断开一方是客户端，
 而这次是服务端。下面是抓包情况：
 
-<center><img src="/images/2019/0930/keepalive3.png"/></center>
+![](http://q61qnv6m4.bkt.clouddn.com/2019%2F0930%2Fkeepalive2.png)
 
-<center><img src="/images/2019/0930/keepalive4.png"/></center>
+![](http://q61qnv6m4.bkt.clouddn.com/2019%2F0930%2Fkeepalive3.png)
 
 总结一下:
 

@@ -115,7 +115,7 @@ tags:
 
   界面如下:
 
-  ![supervisord](/images/dev_ops/supervisor/supervisor_web.png) 
+  ![supervisord](http://q61qnv6m4.bkt.clouddn.com/2018%2F09%2F19%2Fsupervisor_web.png) 
 
 
 ### eventlistener

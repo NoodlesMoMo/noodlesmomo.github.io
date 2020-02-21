@@ -21,7 +21,7 @@ tags:
 
   简化的服务架构如下:
 
-  ![base_arch](/images/2018/0916/base_arch.png)
+  ![base_arch](http://q61qnv6m4.bkt.clouddn.com/2018%2F0916%2Fbase_arch.png)
 
   上图中，gateway是一组go服务，它除用来做接入控制之外，其中还有项重要工作就是协议转换：对外提供`HTTP`请求，并将其转换为RPC调用请求具体
   上游微服务。
@@ -93,7 +93,7 @@ tags:
 
   现在的架构变成这样:
 
-  ![nginx grpc_pass proxy](/images/2018/0916/nginx_grpc_pass.png)
+  ![nginx grpc_pass proxy](http://q61qnv6m4.bkt.clouddn.com/2018%2F0916%2Fnginx_grpc_pass.png)
 
   发起请求，从`gateway` <---> `nginx` <---> `A serivce-providor`, 表面看起来一切正常，发起请求，也成功得到返回，但存在问题：
 
@@ -162,7 +162,7 @@ tags:
 
   架构图变成这样:
 
-  ![etcd discory](/images/2018/0916/etcd_grpc.png)
+  ![etcd discory](http://q61qnv6m4.bkt.clouddn.com/2018%2F0916%2Fetcd_grpc.png)
 
   流程大致是这样: 
   1. 微服务启动时，自动向etcd注册，申请租约并定时维持。
@@ -547,7 +547,7 @@ func parseTarget(target string) ([]string, error) {
 
   gRPC包目前已实现`DNS Resolver`, `round-robin`负载均衡。其在`grpc/clientconn.go`文件中导入初始化。
 
-  ![grpc import init](/images/2018/0916/grpc_client_import.png)
+  ![grpc import init](http://q61qnv6m4.bkt.clouddn.com/2018%2F0916%2Fgrpc_client_import.png)
   
   {% highlight go %}
 
