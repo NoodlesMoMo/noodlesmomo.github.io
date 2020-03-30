@@ -4,9 +4,9 @@
 # ---------------------------------------------------------------
 
 # Site
-title: Reading && Thinking
+title: noodles namespace
 subtitle:
-description: 嗯。好
+description: 临渊羡鱼，不如退而结网
 author: Noodles
 # Support language: de, en, fr-FR, id, ja, ko, pt-BR, pt, ru, zh-Hans, zh-hk, zh-tw
 language: en
@@ -213,7 +213,8 @@ font:
 # Social Links
 # Key is the link label showing to end users.
 # Value is the target link (E.g. GitHub: https://github.com/iissnan)
-#social:
+social:
+  Github: https://github.com/NoodlesMoMo
   #LinkLabel: Link
 
 # Social Links Icons
